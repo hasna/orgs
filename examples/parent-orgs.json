@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "orgs": [
+    {
+      "id": "org_foundation",
+      "slug": "foundation",
+      "name": "Foundation",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "org_project_group",
+      "slug": "project-group",
+      "name": "Project Group",
+      "parentOrgId": "org_foundation",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "teams": [
+    {
+      "id": "team_platform",
+      "slug": "platform",
+      "name": "Platform",
+      "orgId": "org_project_group",
+      "functionIds": [],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "team_runtime",
+      "slug": "runtime",
+      "name": "Runtime",
+      "orgId": "org_project_group",
+      "parentTeamId": "team_platform",
+      "functionIds": [],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "functions": [],
+  "roles": [],
+  "members": [
+    {
+      "id": "mem_director",
+      "slug": "director-agent",
+      "name": "Director Agent",
+      "displayName": "Director Agent",
+      "orgId": "org_foundation",
+      "kind": "agent",
+      "identityRef": { "system": "open-identities", "kind": "agent", "id": "director-agent" },
+      "roleIds": [],
+      "teamIds": ["team_platform"],
+      "functionIds": [],
+      "capabilities": [],
+      "responsibilities": ["Coordinate project groups"],
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "mem_runtime",
+      "slug": "runtime-agent",
+      "name": "Runtime Agent",
+      "displayName": "Runtime Agent",
+      "orgId": "org_project_group",
+      "kind": "agent",
+      "identityRef": { "system": "open-identities", "kind": "agent", "id": "runtime-agent" },
+      "roleIds": [],
+      "teamIds": ["team_runtime"],
+      "functionIds": [],
+      "capabilities": [],
+      "responsibilities": ["Maintain runtime packages"],
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "projects": [],
+  "machines": [],
+  "capabilities": [],
+  "relationships": [
+    {
+      "id": "rel_runtime_reports_director",
+      "slug": "runtime-reports-director",
+      "kind": "reports_to",
+      "source": { "kind": "member", "id": "mem_runtime" },
+      "target": { "kind": "member", "id": "mem_director" },
+      "authority": "none",
+      "scope": [{ "orgId": "org_project_group" }],
+      "allowedActions": [],
+      "deniedActions": [],
+      "provenance": { "source": "example", "observedAt": "2026-01-01T00:00:00.000Z" },
+      "confidence": 1,
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

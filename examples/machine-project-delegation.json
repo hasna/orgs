@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "orgs": [
+    {
+      "id": "org_runtime_lab",
+      "slug": "runtime-lab",
+      "name": "Runtime Lab",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "teams": [],
+  "functions": [],
+  "roles": [],
+  "members": [
+    {
+      "id": "mem_triage_agent",
+      "slug": "triage-agent",
+      "name": "Triage Agent",
+      "displayName": "Triage Agent",
+      "orgId": "org_runtime_lab",
+      "kind": "agent",
+      "identityRef": { "system": "open-identities", "kind": "agent", "id": "triage-agent" },
+      "roleIds": [],
+      "teamIds": [],
+      "functionIds": [],
+      "capabilities": ["runtime:triage"],
+      "responsibilities": ["Route runtime work"],
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "mem_linux_worker",
+      "slug": "linux-worker",
+      "name": "Linux Worker",
+      "displayName": "Linux Worker",
+      "orgId": "org_runtime_lab",
+      "kind": "agent",
+      "identityRef": { "system": "open-identities", "kind": "agent", "id": "linux-worker" },
+      "roleIds": [],
+      "teamIds": [],
+      "functionIds": [],
+      "capabilities": ["runtime:test"],
+      "responsibilities": ["Run Linux runtime tests"],
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj_runtime",
+      "slug": "runtime",
+      "name": "runtime",
+      "orgId": "org_runtime_lab",
+      "projectRef": { "system": "open-projects", "kind": "workspace", "id": "runtime" },
+      "ownerMemberIds": ["mem_triage_agent"],
+      "ownerTeamIds": [],
+      "stewardRoleIds": [],
+      "capabilityIds": ["cap_runtime_test"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "machines": [
+    {
+      "id": "mach_linux_runner",
+      "slug": "linux-runner",
+      "name": "Linux Runner",
+      "orgId": "org_runtime_lab",
+      "machineRef": { "system": "open-machines", "kind": "machine", "id": "linux-runner" },
+      "assignedMemberIds": ["mem_linux_worker"],
+      "assignedTeamIds": [],
+      "projectIds": ["proj_runtime"],
+      "capabilityIds": ["cap_runtime_test"],
+      "dispatchTarget": {
+        "machine": "linux-runner",
+        "target": "runtime:worker.1",
+        "source": "open-sessions",
+        "state": "idle",
+        "lastSeenAt": "2026-01-01T00:00:00.000Z"
+      },
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "cap_runtime_triage",
+      "slug": "runtime-triage",
+      "name": "runtime:triage",
+      "orgId": "org_runtime_lab",
+      "namespace": "runtime",
+      "key": "triage",
+      "ownerMemberIds": ["mem_triage_agent"],
+      "ownerTeamIds": [],
+      "ownerRoleIds": [],
+      "ownerFunctionIds": [],
+      "ownerProjectIds": ["proj_runtime"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "cap_runtime_test",
+      "slug": "runtime-test",
+      "name": "runtime:test",
+      "orgId": "org_runtime_lab",
+      "namespace": "runtime",
+      "key": "test",
+      "ownerMemberIds": ["mem_linux_worker"],
+      "ownerTeamIds": [],
+      "ownerRoleIds": [],
+      "ownerFunctionIds": [],
+      "ownerProjectIds": ["proj_runtime"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_triage_delegates_linux",
+      "slug": "triage-delegates-linux",
+      "kind": "delegates_to",
+      "source": { "kind": "member", "id": "mem_triage_agent" },
+      "target": { "kind": "member", "id": "mem_linux_worker" },
+      "authority": "execute",
+      "scope": [{ "projectId": "proj_runtime" }, { "machineId": "mach_linux_runner" }, { "capabilityId": "cap_runtime_test" }],
+      "allowedActions": ["test"],
+      "deniedActions": ["publish"],
+      "provenance": { "source": "example", "observedAt": "2026-01-01T00:00:00.000Z" },
+      "confidence": 0.95,
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

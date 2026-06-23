@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "orgs": [
+    {
+      "id": "org_open_tools",
+      "slug": "open-tools",
+      "name": "Open Tools",
+      "description": "A small OSS maintainer org.",
+      "identityRef": {
+        "system": "open-identities",
+        "kind": "organization",
+        "id": "open-tools"
+      },
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "teams": [
+    {
+      "id": "team_core",
+      "slug": "core",
+      "name": "Core",
+      "orgId": "org_open_tools",
+      "functionIds": ["func_engineering"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "functions": [
+    {
+      "id": "func_engineering",
+      "slug": "engineering",
+      "name": "Engineering",
+      "orgId": "org_open_tools",
+      "capabilityIds": ["cap_repo_review", "cap_repo_test"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "roles": [
+    {
+      "id": "role_maintainer",
+      "slug": "maintainer",
+      "name": "Maintainer",
+      "orgId": "org_open_tools",
+      "teamId": "team_core",
+      "responsibilities": ["Review changes", "Coordinate releases"],
+      "requiredCapabilities": ["repo:review"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "members": [
+    {
+      "id": "mem_review_agent",
+      "slug": "review-agent",
+      "name": "Review Agent",
+      "displayName": "Review Agent",
+      "orgId": "org_open_tools",
+      "kind": "agent",
+      "identityRef": {
+        "system": "open-identities",
+        "kind": "agent",
+        "id": "review-agent"
+      },
+      "roleIds": ["role_maintainer"],
+      "teamIds": ["team_core"],
+      "functionIds": ["func_engineering"],
+      "capabilities": ["repo:review"],
+      "responsibilities": ["Prepare review context"],
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "mem_build_agent",
+      "slug": "build-agent",
+      "name": "Build Agent",
+      "displayName": "Build Agent",
+      "orgId": "org_open_tools",
+      "kind": "agent",
+      "identityRef": {
+        "system": "open-identities",
+        "kind": "agent",
+        "id": "build-agent"
+      },
+      "roleIds": [],
+      "teamIds": ["team_core"],
+      "functionIds": ["func_engineering"],
+      "capabilities": ["repo:test"],
+      "responsibilities": ["Run builds and tests"],
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj_open_orgs",
+      "slug": "open-orgs",
+      "name": "open-orgs",
+      "orgId": "org_open_tools",
+      "projectRef": {
+        "system": "open-projects",
+        "kind": "workspace",
+        "id": "open-orgs"
+      },
+      "ownerMemberIds": ["mem_review_agent"],
+      "ownerTeamIds": ["team_core"],
+      "stewardRoleIds": ["role_maintainer"],
+      "capabilityIds": ["cap_repo_review"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "machines": [
+    {
+      "id": "mach_linux_dev",
+      "slug": "linux-dev",
+      "name": "Linux Dev",
+      "orgId": "org_open_tools",
+      "machineRef": {
+        "system": "open-machines",
+        "kind": "machine",
+        "id": "linux-dev"
+      },
+      "assignedMemberIds": ["mem_build_agent"],
+      "assignedTeamIds": ["team_core"],
+      "projectIds": ["proj_open_orgs"],
+      "capabilityIds": [],
+      "dispatchTarget": {
+        "machine": "linux-dev",
+        "target": "open-orgs:agent.1",
+        "source": "manual",
+        "state": "idle",
+        "lastSeenAt": "2026-01-01T00:00:00.000Z"
+      },
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "cap_repo_review",
+      "slug": "repo-review",
+      "name": "repo:review",
+      "orgId": "org_open_tools",
+      "namespace": "repo",
+      "key": "review",
+      "ownerMemberIds": ["mem_review_agent"],
+      "ownerTeamIds": ["team_core"],
+      "ownerRoleIds": ["role_maintainer"],
+      "ownerFunctionIds": ["func_engineering"],
+      "ownerProjectIds": ["proj_open_orgs"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "cap_repo_test",
+      "slug": "repo-test",
+      "name": "repo:test",
+      "orgId": "org_open_tools",
+      "namespace": "repo",
+      "key": "test",
+      "ownerMemberIds": ["mem_build_agent"],
+      "ownerTeamIds": ["team_core"],
+      "ownerRoleIds": [],
+      "ownerFunctionIds": ["func_engineering"],
+      "ownerProjectIds": ["proj_open_orgs"],
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_review_delegates_build",
+      "slug": "review-delegates-build",
+      "kind": "delegates_to",
+      "source": { "kind": "member", "id": "mem_review_agent" },
+      "target": { "kind": "member", "id": "mem_build_agent" },
+      "authority": "execute",
+      "scope": [{ "projectId": "proj_open_orgs" }, { "capabilityId": "cap_repo_review" }, { "capabilityId": "cap_repo_test" }],
+      "allowedActions": ["test", "build"],
+      "deniedActions": [],
+      "provenance": { "source": "example", "observedAt": "2026-01-01T00:00:00.000Z" },
+      "confidence": 1,
+      "metadata": {},
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

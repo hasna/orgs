@@ -1,0 +1,74 @@
+{
+  "name": "@hasna/orgs",
+  "version": "0.1.0",
+  "description": "Open organization graph and delegation-context layer for agentic systems",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "orgs": "dist/cli.js",
+    "open-orgs": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./store": {
+      "types": "./dist/store.d.ts",
+      "import": "./dist/store.js"
+    },
+    "./snapshot": {
+      "types": "./dist/snapshot.d.ts",
+      "import": "./dist/snapshot.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs",
+    "examples",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "bun run clean && bun build src/cli.ts --outdir dist --target bun && bun build src/index.ts src/store.ts src/snapshot.ts src/types.ts --outdir dist --target bun && tsc --emitDeclarationOnly --outDir dist",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "verify:release": "bun run typecheck && bun test && bun run build && npm pack --dry-run --ignore-scripts",
+    "dev:cli": "bun run src/cli.ts",
+    "prepublishOnly": "bun run verify:release",
+    "postinstall": "mkdir -p $HOME/.hasna/orgs 2>/dev/null || true"
+  },
+  "keywords": [
+    "orgs",
+    "organization-graph",
+    "delegation",
+    "agentic",
+    "ai-agents",
+    "teams",
+    "cli"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hasna/open-orgs.git"
+  },
+  "homepage": "https://github.com/hasna/open-orgs",
+  "bugs": {
+    "url": "https://github.com/hasna/open-orgs/issues"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "author": "Hasna",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/bun": "^1.2.4",
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
+  }
+}
