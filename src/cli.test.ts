@@ -60,6 +60,72 @@ describe("orgs CLI", () => {
     expect(stored.orgs[0].name).toBe("Original");
   });
 
+  test("uses compact paginated human list output while preserving existing JSON list output", async () => {
+    const out: string[] = [];
+    await runCli(["--store", storePath, "import", "examples/small-oss-org.json"], { out: (text) => out.push(text), throwOnError: true });
+
+    out.length = 0;
+    await runCli(["--store", storePath, "members", "list", "--limit", "1"], { out: (text) => out.push(text), throwOnError: true });
+    const humanList = out.pop()!;
+    expect(humanList).toContain("members: showing 1-1 of 2");
+    expect(humanList).toContain("next cursor: 1");
+    expect(humanList).toContain("members show <id>");
+    expect(humanList).toContain("mem_review_agent");
+    expect(humanList).not.toContain("identityRef");
+    expect(humanList).not.toContain("createdAt");
+
+    out.length = 0;
+    await runCli(["--store", storePath, "--json", "members", "list"], { out: (text) => out.push(text), throwOnError: true });
+    const fullJsonList = JSON.parse(out.pop()!);
+    expect(Array.isArray(fullJsonList)).toBe(true);
+    expect(fullJsonList).toHaveLength(2);
+    expect(fullJsonList[0].identityRef.system).toBe("open-identities");
+
+    out.length = 0;
+    await runCli(["--store", storePath, "--json", "members", "list", "--limit", "1"], { out: (text) => out.push(text), throwOnError: true });
+    const pagedJsonList = JSON.parse(out.pop()!);
+    expect(pagedJsonList.records).toHaveLength(1);
+    expect(pagedJsonList.page).toMatchObject({ total: 2, limit: 1, cursor: "0", nextCursor: "1" });
+  });
+
+  test("filters list output without dumping full records", async () => {
+    const out: string[] = [];
+    await runCli(["--store", storePath, "import", "examples/small-oss-org.json"], { out: (text) => out.push(text), throwOnError: true });
+
+    out.length = 0;
+    await runCli(["--store", storePath, "members", "list", "--filter", "build"], { out: (text) => out.push(text), throwOnError: true });
+    const filteredList = out.pop()!;
+    expect(filteredList).toContain("1 matching of 2");
+    expect(filteredList).toContain("mem_build_agent");
+    expect(filteredList).not.toContain("mem_review_agent");
+    expect(filteredList).not.toContain("identityRef");
+  });
+
+  test("shows compact human details and keeps JSON show as the full record", async () => {
+    const out: string[] = [];
+    await runCli(["--store", storePath, "import", "examples/small-oss-org.json"], { out: (text) => out.push(text), throwOnError: true });
+
+    out.length = 0;
+    await runCli(["--store", storePath, "relationships", "show", "rel_review_delegates_build"], { out: (text) => out.push(text), throwOnError: true });
+    const humanShow = out.pop()!;
+    expect(humanShow.trim().startsWith("{")).toBe(false);
+    expect(humanShow).toContain("relationship: delegates_to");
+    expect(humanShow).toContain("source: member:mem_review_agent");
+    expect(humanShow).toContain("hint: use --json");
+    expect(humanShow).not.toContain("\"source\"");
+    expect(humanShow).not.toContain("createdAt");
+
+    out.length = 0;
+    await runCli(["--store", storePath, "relationships", "show", "rel_review_delegates_build", "--verbose"], { out: (text) => out.push(text), throwOnError: true });
+    expect(out.pop()!).toContain("created: 2026-01-01T00:00:00.000Z");
+
+    out.length = 0;
+    await runCli(["--store", storePath, "--json", "relationships", "show", "rel_review_delegates_build"], { out: (text) => out.push(text), throwOnError: true });
+    const jsonShow = JSON.parse(out.pop()!);
+    expect(jsonShow.source).toEqual({ kind: "member", id: "mem_review_agent" });
+    expect(jsonShow.createdAt).toBe("2026-01-01T00:00:00.000Z");
+  });
+
   test("validates bad relationships through CLI", async () => {
     const out: string[] = [];
     await runCli(["--store", storePath, "--json", "init"], { out: (text) => out.push(text), throwOnError: true });

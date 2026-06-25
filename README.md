@@ -41,6 +41,20 @@ Global flags:
 - `--store <path>` uses an isolated local graph file.
 - `--audit <path>` uses an isolated audit JSONL file.
 - `--json` returns stable JSON output.
+- `--verbose` adds extra human-readable fields without switching to raw object
+  dumps.
+- `--limit <n>` and `--cursor <offset>` page human list/validation/resolve
+  output. Human list output defaults to the first 20 records.
+- `--filter <text>` narrows list output by ID, slug, name, kind, and related
+  record text.
+
+CLI output uses gradual disclosure by default. Human `list`, `status`,
+`validate`, `resolve`, and `show` commands print compact summaries with hints
+for the next detail command. Use `<group> show <id>` for focused detail,
+`--verbose` for more human fields, and `--json` for full machine-readable
+records. Existing `--json <group> list` calls still return the full JSON array;
+when `--json` is combined with explicit `--limit` or `--cursor`, the CLI returns
+`{ "records": [...], "page": { ... } }` for machine-readable pagination.
 
 Data is stored in `~/.hasna/orgs/orgs.json` by default. Set
 `OPEN_ORGS_STORE` and `OPEN_ORGS_AUDIT` to override the default store and audit
