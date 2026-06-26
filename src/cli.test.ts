@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -58,6 +59,40 @@ describe("orgs CLI", () => {
     const stored = JSON.parse(await readFile(storePath, "utf8"));
     expect(stored.orgs).toHaveLength(1);
     expect(stored.orgs[0].name).toBe("Original");
+  });
+
+  test("status reports metadata-only SQLite evidence when the JSON store is missing or empty", async () => {
+    const out: string[] = [];
+    const sqlitePath = join(dir, "orgs.db");
+    await writeFile(sqlitePath, "SQLite format 3\u0000private payload marker", "utf8");
+
+    await runCli(["--store", storePath, "--json", "status"], { out: (text) => out.push(text), throwOnError: true });
+    const missingStatus = JSON.parse(out.pop()!);
+    expect(missingStatus.warnings[0]).toMatchObject({ code: "legacy_sqlite_store_detected" });
+    expect(missingStatus.files.alternateStores[0]).toMatchObject({
+      kind: "sqlite",
+      path: sqlitePath,
+      exists: true,
+      reason: "json_store_missing",
+    });
+    expect(JSON.stringify(missingStatus)).not.toContain("private payload marker");
+
+    await writeFile(storePath, JSON.stringify({ version: 1 }, null, 2), "utf8");
+    out.length = 0;
+    await runCli(["--store", storePath, "status", "--verbose"], { out: (text) => out.push(text), throwOnError: true });
+    const humanStatus = out.pop()!;
+    expect(humanStatus).toContain("warning: SQLite orgs.db exists");
+    expect(humanStatus).toContain("alternate store: sqlite");
+    expect(humanStatus).toContain("json_store_empty");
+    expect(humanStatus).not.toContain("private payload marker");
+  });
+
+  test("help keeps resolve aligned with the other commands", async () => {
+    const out: string[] = [];
+    await runCli(["--help"], { out: (text) => out.push(text), throwOnError: true });
+    const help = out.pop()!;
+    expect(help).toContain("  resolve [--actor <member>]");
+    expect(help).not.toContain("\nresolve [--actor <member>]");
   });
 
   test("uses compact paginated human list output while preserving existing JSON list output", async () => {
@@ -175,6 +210,18 @@ describe("orgs CLI", () => {
     expect(relationship.target.kind).toBe("org");
   });
 
+  test("serializes JSON store writes across simultaneous CLI processes", async () => {
+    const names = Array.from({ length: 10 }, (_, index) => `Concurrent Org ${index}`);
+    await Promise.all(names.map(async (name) => {
+      const stdout = await runCliProcess(["--store", storePath, "--json", "orgs", "add", "--name", name]);
+      expect(JSON.parse(stdout).name).toBe(name);
+    }));
+
+    const data = JSON.parse(await readFile(storePath, "utf8"));
+    expect(data.orgs.map((org: { name: string }) => org.name).sort()).toEqual([...names].sort());
+    expect(existsSync(`${storePath}.lock`)).toBe(false);
+  });
+
   test("requires explicit identity refs for members and agents", async () => {
     const out: string[] = [];
     await runCli(["--store", storePath, "--json", "orgs", "add", "--name", "Identity Org"], { out: (text) => out.push(text), throwOnError: true });
@@ -192,3 +239,18 @@ describe("orgs CLI", () => {
     await expect(runCli(["--store", storePath, "relationships", "add", "--kind", "bogus", "--from", `org:${org.id}`, "--to", `org:${org.id}`], { out: () => undefined, throwOnError: true })).rejects.toThrow(/invalid relationship kind/);
   });
 });
+
+async function runCliProcess(args: string[]): Promise<string> {
+  const child = Bun.spawn(["bun", "run", "src/cli.ts", ...args], {
+    cwd: process.cwd(),
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const stdoutPromise = new Response(child.stdout).text();
+  const stderrPromise = new Response(child.stderr).text();
+  const [exitCode, stdout, stderr] = await Promise.all([child.exited, stdoutPromise, stderrPromise]);
+  if (exitCode !== 0) {
+    throw new Error(`CLI process failed (${exitCode}): ${stderr || stdout}`);
+  }
+  return stdout;
+}

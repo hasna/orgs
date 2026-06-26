@@ -18,9 +18,29 @@ answers context questions such as:
 
 ## Install
 
+`@hasna/orgs` is not currently published on the public npm registry. A registry
+check on 2026-06-26 returned `E404`, so do not use `bun install -g @hasna/orgs`
+as verified install guidance until an authorized publish has happened and the
+registry check succeeds.
+
+Use a checkout for now:
+
 ```bash
-bun install -g @hasna/orgs
+bun install
+bun run build
+bun run src/cli.ts status
 ```
+
+Release verification:
+
+```bash
+bun run verify:release
+bun run verify:published
+```
+
+`verify:published` is expected to fail with `E404` until the package is actually
+published. Do not publish from this repository without explicit permission and
+confidence in the release contents.
 
 ## CLI
 
@@ -58,7 +78,9 @@ when `--json` is combined with explicit `--limit` or `--cursor`, the CLI returns
 
 Data is stored in `~/.hasna/orgs/orgs.json` by default. Set
 `OPEN_ORGS_STORE` and `OPEN_ORGS_AUDIT` to override the default store and audit
-paths.
+paths. `orgs status` reports metadata-only evidence when a legacy or alternate
+SQLite `orgs.db` exists beside a missing or empty JSON store; it does not read
+or migrate SQLite contents automatically.
 
 ## Model
 

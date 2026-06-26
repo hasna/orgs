@@ -36,6 +36,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "verify:release": "bun run typecheck && bun test && bun run build && npm pack --dry-run --ignore-scripts",
+    "verify:published": "npm view @hasna/orgs version --json",
     "dev:cli": "bun run src/cli.ts",
     "prepublishOnly": "bun run verify:release",
     "postinstall": "mkdir -p $HOME/.hasna/orgs 2>/dev/null || true"

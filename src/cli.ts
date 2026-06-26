@@ -105,7 +105,7 @@ Commands:
   relationships list | show <id|slug> | remove <id|slug>
   snapshot <member> [--format json|markdown] [--out <path>]
   snapshot export <member> [--format json|markdown] [--out <path>]
-resolve [--actor <member>] [--capability <namespace:key>] [--team <team>] [--project <project>] [--machine <machine>]
+  resolve [--actor <member>] [--capability <namespace:key>] [--team <team>] [--project <project>] [--machine <machine>]
 
 Human output is compact by default. Use --verbose for extra fields, --json for
 stable full records, --limit/--cursor for pagination, and --filter <text> to
@@ -409,9 +409,16 @@ function formatStatus(status: OrgStoreStatus, parsed: ParsedArgs): string {
     `orgs store: ${status.files.store.path}`,
     `records: ${total}${nonZeroCounts ? ` (${nonZeroCounts})` : ""}`,
   ];
+  for (const warning of status.warnings) {
+    lines.push(`warning: ${warning.message}`);
+  }
   if (verbose) {
     lines.push(`audit: ${status.files.audit.path} (${status.files.audit.exists ? "exists" : "missing"})`);
     lines.push(`data dir: ${status.dataDir}`);
+    for (const alternate of status.files.alternateStores) {
+      const size = alternate.sizeBytes === undefined ? "unknown size" : `${alternate.sizeBytes} bytes`;
+      lines.push(`alternate store: ${alternate.kind} ${alternate.path} (${alternate.reason}, ${size}${alternate.modifiedAt ? `, modified ${alternate.modifiedAt}` : ""})`);
+    }
     lines.push(formatTable(
       ["collection", "count"],
       Object.entries(status.counts).map(([name, count]) => [name, String(count)]),
