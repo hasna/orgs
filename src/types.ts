@@ -233,14 +233,31 @@ export interface OrgStoreStatus {
   files: {
     store: { path: string; exists: boolean };
     audit: { path: string; exists: boolean };
+    alternateStores: AlternateStoreEvidence[];
   };
   counts: Record<GraphCollectionName, number>;
+  warnings: StoreWarning[];
   safety: {
     includesIdentityDocuments: false;
     includesSecrets: false;
     statusOutputIsMetadataOnly: true;
     snapshotsStripPrivateMetadata: true;
   };
+}
+
+export interface AlternateStoreEvidence {
+  kind: "sqlite" | (string & {});
+  path: string;
+  exists: boolean;
+  sizeBytes?: number;
+  modifiedAt?: string;
+  status: "candidate-legacy-store" | (string & {});
+  reason: "json_store_missing" | "json_store_empty" | (string & {});
+}
+
+export interface StoreWarning {
+  code: "legacy_sqlite_store_detected" | (string & {});
+  message: string;
 }
 
 export interface ValidationIssue {

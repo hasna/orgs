@@ -69,3 +69,20 @@ Bridge integrations should be explicit and reversible:
 
 If a bridge cannot prove freshness or authority, it should set `stale: true`
 on the external ref or lower relationship `confidence`.
+
+## Storage Compatibility
+
+The current native store is `~/.hasna/orgs/orgs.json`. Some local environments
+may also contain a legacy or alternate `~/.hasna/orgs/orgs.db`. `orgs status`
+reports only metadata evidence for that SQLite file when the active JSON store
+is missing or empty: path, existence, size, modified time, and reason. It never
+reads SQLite rows or emits private source data.
+
+Follow-ups that should stay explicit rather than implicit:
+
+- Add a reviewed `orgs migrate sqlite` or bridge import command if SQLite data
+  needs to become JSON graph data.
+- Add refresh/update bridge commands for sibling systems only when freshness and
+  authority rules are defined.
+- Restore registry install instructions only after an authorized publish and a
+  successful `bun run verify:published`.

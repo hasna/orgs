@@ -1,10 +1,12 @@
-import { appendFile, chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { appendFile, chmod, mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import {
   ORG_GRAPH_SCHEMA_VERSION,
+  type AlternateStoreEvidence,
   type BaseRecord,
   type BusinessFunctionRecord,
   type CapabilityRecord,
@@ -30,6 +32,7 @@ import {
   type OrgRecord,
   type OrgStore,
   type OrgStoreStatus,
+  type StoreWarning,
   type ProjectRecord,
   type RelationshipRecord,
   type RoleRecord,
@@ -94,6 +97,9 @@ const RELATIONSHIP_AUTHORITIES = new Set(["none", "recommend", "execute", "appro
 const MEMBER_KINDS = new Set(["human", "agent", "service-account"]);
 const MEMBER_STATUSES = new Set(["active", "inactive", "external", "archived"]);
 const DISPATCH_TARGET_STATES = new Set(["idle", "active", "unknown", "stale", "unavailable"]);
+const STORE_LOCK_TIMEOUT_MS = 30_000;
+const STORE_LOCK_STALE_MS = 5 * 60_000;
+const STORE_LOCK_POLL_MS = 25;
 
 const COLLECTION_TO_NODE_KIND: Record<(typeof NODE_COLLECTIONS)[number], Exclude<OrgNodeKind, "external">> = {
   orgs: "org",
@@ -157,13 +163,18 @@ export class JsonOrgStore implements OrgStore {
     await chmod(dirname(this.filePath), 0o700).catch(() => undefined);
     await mkdir(dirname(this.auditPath), { recursive: true, mode: 0o700 });
     await chmod(dirname(this.auditPath), 0o700).catch(() => undefined);
-    if (!existsSync(this.filePath)) {
-      await this.writeStore(defaultGraphData(), "init", "store");
-    }
+    await this.withMutation(async () => {
+      if (!existsSync(this.filePath)) {
+        await this.writeStore(defaultGraphData(), "init", "store");
+      }
+    });
   }
 
   async status(): Promise<OrgStoreStatus> {
     const data = await this.readStore();
+    const counts = countsFor(data);
+    const storeExists = existsSync(this.filePath);
+    const alternateStores = await this.detectAlternateStores(storeExists, countsTotal(data));
     return {
       service: "orgs",
       schemaVersion: "1.0",
@@ -175,10 +186,12 @@ export class JsonOrgStore implements OrgStore {
         activeAuditOverride: Boolean(process.env[OPEN_ORGS_AUDIT_ENV]),
       },
       files: {
-        store: { path: this.filePath, exists: existsSync(this.filePath) },
+        store: { path: this.filePath, exists: storeExists },
         audit: { path: this.auditPath, exists: existsSync(this.auditPath) },
+        alternateStores,
       },
-      counts: countsFor(data),
+      counts,
+      warnings: statusWarningsForAlternateStores(alternateStores),
       safety: {
         includesIdentityDocuments: false,
         includesSecrets: false,
@@ -327,11 +340,67 @@ export class JsonOrgStore implements OrgStore {
       release = resolve;
     });
     await previous.catch(() => undefined);
+    let releaseLock: (() => Promise<void>) | undefined;
     try {
+      releaseLock = await this.acquireStoreLock();
       return await fn();
     } finally {
+      await releaseLock?.();
       release();
     }
+  }
+
+  private async acquireStoreLock(): Promise<() => Promise<void>> {
+    await mkdir(dirname(this.filePath), { recursive: true, mode: 0o700 });
+    await chmod(dirname(this.filePath), 0o700).catch(() => undefined);
+    const lockPath = `${this.filePath}.lock`;
+    const lockId = randomUUID();
+    const startedAt = Date.now();
+    while (true) {
+      try {
+        const handle = await open(lockPath, "wx", 0o600);
+        try {
+          await handle.writeFile(`${JSON.stringify({ id: lockId, pid: process.pid, createdAt: nowIso(), store: this.filePath })}\n`, "utf8");
+        } catch (error) {
+          await handle.close().catch(() => undefined);
+          await removeLockIfOwned(lockPath, lockId).catch(() => undefined);
+          throw error;
+        }
+        await handle.close();
+        let released = false;
+        return async () => {
+          if (released) return;
+          released = true;
+          await removeLockIfOwned(lockPath, lockId).catch(() => undefined);
+        };
+      } catch (error) {
+        if (!isNodeError(error) || error.code !== "EEXIST") throw error;
+        if (await removeStaleLock(lockPath)) continue;
+        if (Date.now() - startedAt > STORE_LOCK_TIMEOUT_MS) {
+          throw new Error(`Timed out waiting for org store lock: ${lockPath}`);
+        }
+        await delay(STORE_LOCK_POLL_MS);
+      }
+    }
+  }
+
+  private async detectAlternateStores(storeExists: boolean, recordCount: number): Promise<AlternateStoreEvidence[]> {
+    if (storeExists && recordCount > 0) return [];
+    const sqlitePath = join(dirname(this.filePath), "orgs.db");
+    const sqliteStats = await stat(sqlitePath).catch((error) => {
+      if (isNodeError(error) && error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (!sqliteStats?.isFile()) return [];
+    return [{
+      kind: "sqlite",
+      path: sqlitePath,
+      exists: true,
+      sizeBytes: sqliteStats.size,
+      modifiedAt: sqliteStats.mtime.toISOString(),
+      status: "candidate-legacy-store",
+      reason: storeExists ? "json_store_empty" : "json_store_missing",
+    }];
   }
 }
 
@@ -775,6 +844,56 @@ function countsFor(data: OrgGraphData): Record<GraphCollectionName, number> {
 
 function countsTotal(data: OrgGraphData): number {
   return COLLECTIONS.reduce((sum, collection) => sum + data[collection].length, 0);
+}
+
+function statusWarningsForAlternateStores(alternateStores: AlternateStoreEvidence[]): StoreWarning[] {
+  return alternateStores.map((store) => ({
+    code: "legacy_sqlite_store_detected",
+    message: `SQLite orgs.db exists while the active JSON store is ${store.reason === "json_store_missing" ? "missing" : "empty"}; this CLI reads the active JSON store and did not inspect SQLite contents.`,
+  }));
+}
+
+async function removeStaleLock(lockPath: string): Promise<boolean> {
+  const lockStats = await stat(lockPath).catch((error) => {
+    if (isNodeError(error) && error.code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (!lockStats) return true;
+  if (Date.now() - lockStats.mtimeMs < STORE_LOCK_STALE_MS) return false;
+  const lock = await readLockFile(lockPath);
+  if (lock?.pid !== undefined && isProcessAlive(lock.pid)) return false;
+  if (!lock?.id) return false;
+  await removeLockIfOwned(lockPath, lock.id);
+  return !existsSync(lockPath);
+}
+
+async function removeLockIfOwned(lockPath: string, lockId: string): Promise<boolean> {
+  const lock = await readLockFile(lockPath);
+  if (!lock || lock.id !== lockId) return false;
+  await rm(lockPath, { force: true });
+  return true;
+}
+
+async function readLockFile(lockPath: string): Promise<{ id?: string; pid?: number } | undefined> {
+  try {
+    const parsed = JSON.parse(await readFile(lockPath, "utf8")) as { id?: unknown; pid?: unknown };
+    return {
+      id: typeof parsed.id === "string" ? parsed.id : undefined,
+      pid: typeof parsed.pid === "number" && Number.isInteger(parsed.pid) && parsed.pid > 0 ? parsed.pid : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ESRCH") return false;
+    return true;
+  }
 }
 
 function matchesRecord(record: Pick<BaseRecord, "id" | "slug">, target: string): boolean {
